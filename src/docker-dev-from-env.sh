@@ -170,22 +170,43 @@ function help() {
 
 # shellcheck disable=SC2015
 [[ "${__usage+x}" ]] || read -r -d '' __usage <<-'EOF' || true # exits non-zero when EOF encountered
-	  -e --env   [arg] Environment filename.
-	  -t --temp  [arg] Location of tempfile. Default="/tmp/bar"
-	  -v               Enable verbose mode, print script as it is executed
+	  -e --env         [arg] Path to file containing environment vars
+	  -i --img-name    [arg] Name used for the docker image
+	  -s --src-dir     [arg] Source directory for the bind mount.
+	                         Default="/"
+	  -t --target-dir  [arg] Target directory for the bind mount.
+	                         Default="/src"
+	  -c --cmd         [arg] Commands to run, e.g. "yarn install && yarn run test --watch"
+	  -N --no-log      If set, the container log will not be shown
+	  -v --verbose     Enable verbose mode, print script as it is executed
 	  -d --debug       Enables debug mode
 	  -h --help        This page
 	  -n --no-color    Disable color output
-	  -1 --one         Do just one thing
-	  -i --input [arg] File to process. Can be repeated.
-	  -x               Specify a flag. Can be repeated.
 EOF
 
 # shellcheck disable=SC2015
 [[ "${__helptext+x}" ]] || read -r -d '' __helptext <<-'EOF' || true # exits non-zero when EOF encountered
-	 This is Bash3 Boilerplate's help text. Feel free to add any description of your
-	 program or elaborate more on command-line arguments. This section is not
-	 parsed and will be added as-is to the help.
+	 This script closes a running container based on an image name, then
+	 builds a new image from the Dockerfile, setting up a development
+	 environment via a bind mount while doing so. It then executes the
+	 passed command in the container, optionally showing the container log. 
+
+	 The file containing environment vars should use screaming snake case
+	 names based on the multi-character command line flags prefixed with
+	 DS_DFE_, e.g. DS_DFE_INSTALL_CMD="dotnet restore" is equivalent to
+	 --install-cmd "dotnet restore". The order of command line flags
+	 matters (previous flags or env vars introduced by --env can be
+	 overwritten).
+
+	 Examples:
+	   - Run based on .env.
+             docker-dev-from-env -e ./.env
+
+	   - Run the development command, do not show the log.
+             docker-dev-from-env -c "yarn install && yarn run dev" -N
+
+	   - Read command line flags from .env, but specify the command.
+             docker-dev-from-env -e ./.env -c "npm install && jest --watch"
 EOF
 
 # Translate usage string -> getopts arguments, and set $arg_<flag> defaults
@@ -428,7 +449,7 @@ fi
 ### Validation. Error out if the things required for your script are not present
 ##############################################################################
 
-[[ "${arg_f:-}" ]] || help "Setting a filename with -f or --file is required"
+# [[ "${arg_f:-}" ]] || help "Setting a filename with -f or --file is required"
 [[ "${LOG_LEVEL:-}" ]] || emergency "Cannot continue without LOG_LEVEL. "
 
 ### Runtime
@@ -440,40 +461,46 @@ info "__dir: ${__dir}"
 info "__base: ${__base}"
 info "OSTYPE: ${OSTYPE}"
 
-info "arg_f: ${arg_f}"
+info "arg_e: ${arg_e}"
+info "arg_i: ${arg_i}"
+info "arg_s: ${arg_s}"
+info "arg_t: ${arg_t}"
+info "arg_c: ${arg_c}"
+info "arg_N: ${arg_N}"
 info "arg_d: ${arg_d}"
 info "arg_v: ${arg_v}"
 info "arg_h: ${arg_h}"
+info "arg_n: ${arg_n}"
 
 # shellcheck disable=SC2015
-if [[ -n "${arg_i:-}" ]] && declare -p arg_i 2>/dev/null | grep -q '^declare \-a'; then
-	info "arg_i:"
-	for input_file in "${arg_i[@]}"; do
-		info " - ${input_file}"
-	done
-elif [[ -n "${arg_i:-}" ]]; then
-	info "arg_i: ${arg_i}"
-else
-	info "arg_i: 0"
-fi
+# if [[ -n "${arg_i:-}" ]] && declare -p arg_i 2>/dev/null | grep -q '^declare \-a'; then
+	# info "arg_i:"
+	# for input_file in "${arg_i[@]}"; do
+		# info " - ${input_file}"
+	# done
+# elif [[ -n "${arg_i:-}" ]]; then
+	# info "arg_i: ${arg_i}"
+# else
+	# info "arg_i: 0"
+# fi
 
 # shellcheck disable=SC2015
-if [[ -n "${arg_x:-}" ]] && declare -p arg_x 2>/dev/null | grep -q '^declare \-a'; then
-	info "arg_x: ${#arg_x[@]}"
-elif [[ -n "${arg_x:-}" ]]; then
-	info "arg_x: ${arg_x}"
-else
-	info "arg_x: 0"
-fi
+# if [[ -n "${arg_x:-}" ]] && declare -p arg_x 2>/dev/null | grep -q '^declare \-a'; then
+	# info "arg_x: ${#arg_x[@]}"
+# elif [[ -n "${arg_x:-}" ]]; then
+	# info "arg_x: ${arg_x}"
+# else
+	# info "arg_x: 0"
+# fi
 
-info "$(echo -e "multiple lines example - line #1\\nmultiple lines example - line #2\\nimagine logging the output of 'ls -al /path/'")"
+# info "$(echo -e "multiple lines example - line #1\\nmultiple lines example - line #2\\nimagine logging the output of 'ls -al /path/'")"
 
 # All of these go to STDERR, so you can use STDOUT for piping machine readable information to other software
-debug "Info useful to developers for debugging the application, not useful during operations."
-info "Normal operational messages - may be harvested for reporting, measuring throughput, etc. - no action required."
-notice "Events that are unusual but not error conditions - might be summarized in an email to developers or admins to spot potential problems - no immediate action required."
-warning "Warning messages, not an error, but indication that an error will occur if action is not taken, e.g. file system 85% full - each item must be resolved within a given time. This is a debug message"
-error "Non-urgent failures, these should be relayed to developers or admins; each item must be resolved within a given time."
-critical "Should be corrected immediately, but indicates failure in a primary system, an example is a loss of a backup ISP connection."
-alert "Should be corrected immediately, therefore notify staff who can fix the problem. An example would be the loss of a primary ISP connection."
-emergency "A \"panic\" condition usually affecting multiple apps/servers/sites. At this level it would usually notify all tech staff on call."
+# debug "Info useful to developers for debugging the application, not useful during operations."
+# info "Normal operational messages - may be harvested for reporting, measuring throughput, etc. - no action required."
+# notice "Events that are unusual but not error conditions - might be summarized in an email to developers or admins to spot potential problems - no immediate action required."
+# warning "Warning messages, not an error, but indication that an error will occur if action is not taken, e.g. file system 85% full - each item must be resolved within a given time. This is a debug message"
+# error "Non-urgent failures, these should be relayed to developers or admins; each item must be resolved within a given time."
+# critical "Should be corrected immediately, but indicates failure in a primary system, an example is a loss of a backup ISP connection."
+# alert "Should be corrected immediately, therefore notify staff who can fix the problem. An example would be the loss of a primary ISP connection."
+# emergency "A \"panic\" condition usually affecting multiple apps/servers/sites. At this level it would usually notify all tech staff on call."
