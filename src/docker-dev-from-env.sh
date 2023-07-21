@@ -170,7 +170,7 @@ function help() {
 
 # shellcheck disable=SC2015
 [[ "${__usage+x}" ]] || read -r -d '' __usage <<-'EOF' || true # exits non-zero when EOF encountered
-	  -f --file  [arg] Filename to process. Required.
+	  -e --env   [arg] Environment filename.
 	  -t --temp  [arg] Location of tempfile. Default="/tmp/bar"
 	  -v               Enable verbose mode, print script as it is executed
 	  -d --debug       Enables debug mode
