@@ -488,6 +488,12 @@ do
     docker rm -f $CID
 done
 
+# Builds the docker image from the dockerfile if it doesn't exist
+if [[ "$(docker images -q $arg_i 2> /dev/null)" == "" ]]; then
+    echo "Building docker image: $arg_i"
+    docker build -t $arg_i .
+fi
+
 # shellcheck disable=SC2015
 # if [[ -n "${arg_i:-}" ]] && declare -p arg_i 2>/dev/null | grep -q '^declare \-a'; then
 # info "arg_i:"

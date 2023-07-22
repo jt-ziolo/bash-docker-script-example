@@ -21,6 +21,7 @@ function teardown {
 	docker rm -f test-container-1 2>/dev/null &
 	docker rm -f test-container-2 2>/dev/null &
 	docker rmi test-image 2>/dev/null &
+	docker rmi test-image-distinct 2>/dev/null &
 }
 
 function can_run_the_script { #@test
@@ -74,4 +75,12 @@ function detects_multiple_running_containers_and_prints_correct_ids { #@test
 		assert_output --partial "Removing existing container with ID: $CID"
 		echo "# Asserted for ID: $CID" >&3
 	done
+}
+
+function builds_image_if_it_does_not_exist { #@test
+	echo "# In directory: $(pwd)" >&3
+
+	run docker-dev-from-env.sh -i test-image-distinct
+	assert_output --partial "Building docker image: test-image-distinct"
+	assert [ "$(docker images -q test-image-distinct 2> /dev/null)" != "" ]
 }
