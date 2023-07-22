@@ -16,8 +16,11 @@ function setup {
 
 function teardown {
 	# Remove the test image and container if they exist
-	docker rm -f test-container 2>/dev/null & # don't keep open this script's stderr
-	docker rmi test-image 2>/dev/null &       # don't keep open this script's stderr
+	docker rm -f test-container 2>/dev/null &
+	docker rm -f test-container-0 2>/dev/null &
+	docker rm -f test-container-1 2>/dev/null &
+	docker rm -f test-container-2 2>/dev/null &
+	docker rmi test-image 2>/dev/null &
 }
 
 function can_run_the_script { #@test
@@ -40,7 +43,6 @@ function exits_with_error_if_Dockerfile_not_found_in_working_directory { #@test
 function detects_running_container_and_prints_correct_id { #@test
 	echo "# In directory: $(pwd)" >&3
 
-	echo "# Run container" >&3
 	docker build -t test-image .
 	CID_ACTUAL=$(docker run --name test-container -d test-image)
 	# need just the first 12 characters
@@ -54,16 +56,22 @@ function detects_running_container_and_prints_correct_id { #@test
 function detects_multiple_running_containers_and_prints_correct_ids { #@test
 	echo "# In directory: $(pwd)" >&3
 
-	# for ((i = 0 ; i < 100 ; i++)); do
-	# echo "$i"
-	# done
-	echo "# Run container" >&3
 	docker build -t test-image .
-	CID_ACTUAL=$(docker run --name test-container -d test-image)
-	# need just the first 12 characters
-	CID_ACTUAL=$(echo $CID_ACTUAL | head -c 12)
-	echo "# CID_ACTUAL == $CID_ACTUAL" >&3
 
+	CIDS_ACTUAL=()
+	for i in {1..3}; do
+		echo "# Run container $i" >&3
+		CID_ACTUAL=$(docker run --name test-container-$i -d test-image)
+		# need just the first 12 characters
+		CID_ACTUAL=$(echo $CID_ACTUAL | head -c 12)
+		echo "# CID_ACTUAL == $CID_ACTUAL" >&3
+		CIDS_ACTUAL+=($CID_ACTUAL)
+	done
+	echo "# ${CIDS_ACTUAL[@]}" >&3
+	echo "# $(docker ps -a)" >&3
 	run docker-dev-from-env.sh -i test-image
-	assert_output --partial "Removing existing container with ID: $CID_ACTUAL"
+	for CID in "${CIDS_ACTUAL[@]}"; do
+		assert_output --partial "Removing existing container with ID: $CID"
+		echo "# Asserted for ID: $CID" >&3
+	done
 }

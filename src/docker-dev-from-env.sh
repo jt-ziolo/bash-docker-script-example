@@ -478,14 +478,16 @@ if [ ! -f "Dockerfile" ]; then
 fi 
 
 # Forces removal of the running docker container that matches the image of the dockerfile.
-CID=$(docker ps -a -q --filter ancestor=$arg_i --format="{{.ID}}")
+CIDS=$(docker ps -a -q --filter ancestor=$arg_i)
+# CID=$(docker ps -a -q --filter ancestor=$arg_i --format="{{.ID}}")
 
-if [ ! -z "$CID" ]
-then
+for CID in $CIDS
+do
+    # Forces removal of the running docker container
     echo "Removing existing container with ID: $CID"
     docker rm -f $CID
-fi
- 
+done
+
 # shellcheck disable=SC2015
 # if [[ -n "${arg_i:-}" ]] && declare -p arg_i 2>/dev/null | grep -q '^declare \-a'; then
 # info "arg_i:"
