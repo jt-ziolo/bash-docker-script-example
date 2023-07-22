@@ -12,6 +12,8 @@ function setup {
 	PATH="$DIR/../src:$PATH"
 	# cd into the example directory
 	cd ./test/example || exit
+
+	echo "# In directory: $(pwd)" >&3
 }
 
 function teardown {
@@ -20,6 +22,8 @@ function teardown {
 	docker rm -f test-container-0 2>/dev/null &
 	docker rm -f test-container-1 2>/dev/null &
 	docker rm -f test-container-2 2>/dev/null &
+	docker rm -f test-image-dev 2>/dev/null &
+	docker rm -f test-image-distinct-dev 2>/dev/null &
 	docker rmi test-image 2>/dev/null &
 	docker rmi test-image-distinct 2>/dev/null &
 }
@@ -29,21 +33,18 @@ function can_run_the_script { #@test
 }
 
 function detects_Dockerfile_in_working_directory { #@test
-	echo "# In directory: $(pwd)" >&3
 	run docker-dev-from-env.sh
 	refute_output --partial "Dockerfile does not exist in current directory"
 }
 
 function exits_with_error_if_Dockerfile_not_found_in_working_directory { #@test
 	cd ../
-	echo "# In directory: $(pwd)" >&3
+	echo "# Changed directory: $(pwd)" >&3
 	run docker-dev-from-env.sh
 	assert_output --partial "Dockerfile does not exist in current directory"
 }
 
 function detects_running_container_and_prints_correct_id { #@test
-	echo "# In directory: $(pwd)" >&3
-
 	docker build -t test-image .
 	CID_ACTUAL=$(docker run --name test-container -d test-image)
 	# need just the first 12 characters
@@ -55,8 +56,6 @@ function detects_running_container_and_prints_correct_id { #@test
 }
 
 function detects_multiple_running_containers_and_prints_correct_ids { #@test
-	echo "# In directory: $(pwd)" >&3
-
 	docker build -t test-image .
 
 	CIDS_ACTUAL=()
@@ -78,9 +77,17 @@ function detects_multiple_running_containers_and_prints_correct_ids { #@test
 }
 
 function builds_image_if_it_does_not_exist { #@test
-	echo "# In directory: $(pwd)" >&3
-
 	run docker-dev-from-env.sh -i test-image-distinct
 	assert_output --partial "Building docker image: test-image-distinct"
 	assert [ "$(docker images -q test-image-distinct 2> /dev/null)" != "" ]
+}
+
+function runs_container_with_correct_bind_mount_params { #@test
+	run docker-dev-from-env.sh -i test-image -s ./ -t /app
+	CID_ACTUAL=$(docker ps -a -q --filter ancestor=test-image)
+	CID_ACTUAL=$(echo "$CID_ACTUAL" | head -c 12)
+	assert [ "$CID_ACTUAL" != "" ]
+	echo "# CID == $CID_ACTUAL" >&3
+	echo "# $(docker ps -a | grep $CID_ACTUAL)" >&3
+	assert_output --partial "Running container test-image-dev ($CID_ACTUAL), mounting ./ at /app"
 }

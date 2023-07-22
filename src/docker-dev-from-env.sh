@@ -173,9 +173,9 @@ function help() {
 	  -e --env         [arg] Path to file containing environment vars
 	  -i --img-name    [arg] Name used for the docker image
 	  -s --src-dir     [arg] Source directory for the bind mount.
-	                         Default="/"
+	                         Default="./"
 	  -t --target-dir  [arg] Target directory for the bind mount.
-	                         Default="/src"
+	                         Default="/app"
 	  -c --cmd         [arg] Commands to run, e.g. "yarn install && yarn run test --watch"
 	  -N --no-log      If set, the container log will not be shown
 	  -v --verbose     Enable verbose mode, print script as it is executed
@@ -475,54 +475,29 @@ info "arg_n: ${arg_n}"
 if [ ! -f "Dockerfile" ]; then
 	error "Dockerfile does not exist in current directory: $(pwd)"
 	exit 1
-fi 
+fi
 
 # Forces removal of the running docker container that matches the image of the dockerfile.
 CIDS=$(docker ps -a -q --filter ancestor=$arg_i)
 # CID=$(docker ps -a -q --filter ancestor=$arg_i --format="{{.ID}}")
 
-for CID in $CIDS
-do
-    # Forces removal of the running docker container
-    echo "Removing existing container with ID: $CID"
-    docker rm -f $CID
+for CID in $CIDS; do
+	# Forces removal of the running docker container
+	info "Removing existing container with ID: $CID"
+	docker rm -f $CID
 done
 
 # Builds the docker image from the dockerfile if it doesn't exist
-if [[ "$(docker images -q $arg_i 2> /dev/null)" == "" ]]; then
-    echo "Building docker image: $arg_i"
-    docker build -t $arg_i .
+if [[ "$(docker images -q $arg_i 2>/dev/null)" == "" ]]; then
+	info "Building docker image: $arg_i"
+	docker build -t $arg_i .
 fi
 
-# shellcheck disable=SC2015
-# if [[ -n "${arg_i:-}" ]] && declare -p arg_i 2>/dev/null | grep -q '^declare \-a'; then
-# info "arg_i:"
-# for input_file in "${arg_i[@]}"; do
-# info " - ${input_file}"
-# done
-# elif [[ -n "${arg_i:-}" ]]; then
-# info "arg_i: ${arg_i}"
-# else
-# info "arg_i: 0"
-# fi
-
-# shellcheck disable=SC2015
-# if [[ -n "${arg_x:-}" ]] && declare -p arg_x 2>/dev/null | grep -q '^declare \-a'; then
-# info "arg_x: ${#arg_x[@]}"
-# elif [[ -n "${arg_x:-}" ]]; then
-# info "arg_x: ${arg_x}"
-# else
-# info "arg_x: 0"
-# fi
-
-# info "$(echo -e "multiple lines example - line #1\\nmultiple lines example - line #2\\nimagine logging the output of 'ls -al /path/'")"
-
-# All of these go to STDERR, so you can use STDOUT for piping machine readable information to other software
-# debug "Info useful to developers for debugging the application, not useful during operations."
-# info "Normal operational messages - may be harvested for reporting, measuring throughput, etc. - no action required."
-# notice "Events that are unusual but not error conditions - might be summarized in an email to developers or admins to spot potential problems - no immediate action required."
-# warning "Warning messages, not an error, but indication that an error will occur if action is not taken, e.g. file system 85% full - each item must be resolved within a given time. This is a debug message"
-# error "Non-urgent failures, these should be relayed to developers or admins; each item must be resolved within a given time."
-# critical "Should be corrected immediately, but indicates failure in a primary system, an example is a loss of a backup ISP connection."
-# alert "Should be corrected immediately, therefore notify staff who can fix the problem. An example would be the loss of a primary ISP connection."
-# emergency "A \"panic\" condition usually affecting multiple apps/servers/sites. At this level it would usually notify all tech staff on call."
+# Run the container and assign the bind mount
+CIDFILE="/tmp/docker-dev-from-env.cid"
+if [ -f "$CIDFILE" ]; then
+	rm -f "$CIDFILE"
+fi
+docker run -v "$arg_s":"$arg_t" -w "$arg_t" --cidfile "$CIDFILE" --name "$arg_i-dev" -d "$arg_i" 
+NEWCID=$(cat "$CIDFILE" | head -c 12)
+info "Running container $arg_i-dev ($NEWCID), mounting $arg_s at $arg_t"
