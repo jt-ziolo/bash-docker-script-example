@@ -475,8 +475,17 @@ info "arg_n: ${arg_n}"
 if [ ! -f "Dockerfile" ]; then
 	error "Dockerfile does not exist in current directory: $(pwd)"
 	exit 1
-fi
+fi 
 
+# Forces removal of the running docker container that matches the image of the dockerfile.
+CID=$(docker ps -a -q --filter ancestor=$arg_i --format="{{.ID}}")
+
+if [ ! -z "$CID" ]
+then
+    echo "Removing existing container with ID: $CID"
+    docker rm -f $CID
+fi
+ 
 # shellcheck disable=SC2015
 # if [[ -n "${arg_i:-}" ]] && declare -p arg_i 2>/dev/null | grep -q '^declare \-a'; then
 # info "arg_i:"
