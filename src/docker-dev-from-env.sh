@@ -200,13 +200,13 @@ EOF
 
 	 Examples:
 	   - Run based on .env.
-             docker-dev-from-env -e ./.env
+	             docker-dev-from-env -e ./.env
 
 	   - Run the development command, do not show the log.
-             docker-dev-from-env -c "yarn install && yarn run dev" -N
+	             docker-dev-from-env -c "yarn install && yarn run dev" -N
 
 	   - Read command line flags from .env, but specify the command.
-             docker-dev-from-env -e ./.env -c "npm install && jest --watch"
+	             docker-dev-from-env -e ./.env -c "npm install && jest --watch"
 EOF
 
 # Translate usage string -> getopts arguments, and set $arg_<flag> defaults
@@ -472,25 +472,30 @@ info "arg_v: ${arg_v}"
 info "arg_h: ${arg_h}"
 info "arg_n: ${arg_n}"
 
+if [ ! -f "Dockerfile" ]; then
+	error "Dockerfile does not exist in current directory: $(pwd)"
+	exit 1
+fi
+
 # shellcheck disable=SC2015
 # if [[ -n "${arg_i:-}" ]] && declare -p arg_i 2>/dev/null | grep -q '^declare \-a'; then
-	# info "arg_i:"
-	# for input_file in "${arg_i[@]}"; do
-		# info " - ${input_file}"
-	# done
+# info "arg_i:"
+# for input_file in "${arg_i[@]}"; do
+# info " - ${input_file}"
+# done
 # elif [[ -n "${arg_i:-}" ]]; then
-	# info "arg_i: ${arg_i}"
+# info "arg_i: ${arg_i}"
 # else
-	# info "arg_i: 0"
+# info "arg_i: 0"
 # fi
 
 # shellcheck disable=SC2015
 # if [[ -n "${arg_x:-}" ]] && declare -p arg_x 2>/dev/null | grep -q '^declare \-a'; then
-	# info "arg_x: ${#arg_x[@]}"
+# info "arg_x: ${#arg_x[@]}"
 # elif [[ -n "${arg_x:-}" ]]; then
-	# info "arg_x: ${arg_x}"
+# info "arg_x: ${arg_x}"
 # else
-	# info "arg_x: 0"
+# info "arg_x: 0"
 # fi
 
 # info "$(echo -e "multiple lines example - line #1\\nmultiple lines example - line #2\\nimagine logging the output of 'ls -al /path/'")"
