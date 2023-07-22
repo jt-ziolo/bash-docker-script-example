@@ -5,7 +5,7 @@ repos:
         name: bats-tests
         entry: ./test/bats/bin/bats
         language: script
-        files: .*\.bats$
+        files: .*\.bats$|.*\.bats\.sh$
         # If you want to be less strict, you can replace the below pre-commit
         # and pre-merge-commit hooks with "pre-push"
         stages: [pre-commit, pre-merge-commit]
