@@ -171,42 +171,52 @@ function help() {
 # shellcheck disable=SC2015
 [[ "${__usage+x}" ]] || read -r -d '' __usage <<-'EOF' || true # exits non-zero when EOF encountered
 	  -e --env         [arg] Path to file containing environment vars
-	  -i --img-name    [arg] Name used for the docker image
+	  -i --img-name    [arg] Name used for the docker image.
+	                         Default="default"
 	  -s --src-dir     [arg] Source directory for the bind mount.
 	                         Default="./"
 	  -t --target-dir  [arg] Target directory for the bind mount.
 	                         Default="/app"
-	  -c --cmd         [arg] Commands to run, e.g. "yarn install && yarn run test --watch"
-	  -N --no-log      If set, the container log will not be shown
-	  -v --verbose     Enable verbose mode, print script as it is executed
-	  -d --debug       Enables debug mode
-	  -h --help        This page
-	  -n --no-color    Disable color output
+	  -c --cmd         [arg] Commands to run inside the container, runs
+	                         an interactive shell session if "sh" is passed
+	  -p --preserve          If present, the container is not removed after it
+	                         finishes running the command, but it may still stop
+				 if not kept running by another process
+	  -v --verbose           Enable verbose mode, print script as it is executed
+	  -d --debug             Enables debug mode
+	  -h --help              This page
+	  -n --no-color          Disable color output
 EOF
 
 # shellcheck disable=SC2015
 [[ "${__helptext+x}" ]] || read -r -d '' __helptext <<-'EOF' || true # exits non-zero when EOF encountered
-	 This script closes a running container based on an image name, then
-	 builds a new image from the Dockerfile, setting up a development
-	 environment via a bind mount while doing so. It then executes the
-	 passed command in the container, optionally showing the container log. 
+	 This script closes all running containers that are descendants of the
+	 image name passed in, then builds a new image from the Dockerfile,
+	 setting up a development environment via a bind mount while doing so.
+	 It then executes the passed command inside of the container, removing
+	 the container when done unless the --preserve flag is passed in.
 
-	 The file containing environment vars should use screaming snake case
-	 names based on the multi-character command line flags prefixed with
-	 DS_DFE_, e.g. DS_DFE_INSTALL_CMD="dotnet restore" is equivalent to
-	 --install-cmd "dotnet restore". The order of command line flags
-	 matters (previous flags or env vars introduced by --env can be
-	 overwritten).
+	 When using the --env flag, the file containing environment vars should
+	 use screaming snake case names based on the multi-character command
+	 line flags prefixed with DS_DFE_, e.g. DS_DFE_IMG_NAME="api-img" is
+	 equivalent to passing "--img-name api-img". Environment vars
+	 introduced by --env are overwritten by other flags, if they are
+	 provided.
 
 	 Examples:
-	   - Run based on .env.
+	   - Run with command line flags based on .env
 	             docker-dev-from-env -e ./.env
 
-	   - Run the development command, do not show the log.
-	             docker-dev-from-env -c "yarn install && yarn run dev" -N
+	   - Run a command, removing the container after (ephemeral)
+	             docker-dev-from-env -c "yarn install && yarn run test" -k
 
-	   - Read command line flags from .env, but specify the command.
-	             docker-dev-from-env -e ./.env -c "npm install && jest --watch"
+	   - Start a container and run an interactive shell session
+	             docker-dev-from-env
+
+	   - Run a container for the image "example", with the host directory
+	   ./ copied to the container as /app, then list from /app in the
+	   container, removing it afterwards (ephemeral)
+	             docker-dev-from-env -i example -s ./ -t /app -c ls -k
 EOF
 
 # Translate usage string -> getopts arguments, and set $arg_<flag> defaults
@@ -455,22 +465,55 @@ fi
 ### Runtime
 ##############################################################################
 
-info "__i_am_main_script: ${__i_am_main_script}"
-info "__file: ${__file}"
-info "__dir: ${__dir}"
-info "__base: ${__base}"
-info "OSTYPE: ${OSTYPE}"
+debug "__i_am_main_script: ${__i_am_main_script}"
+debug "__file: ${__file}"
+debug "__dir: ${__dir}"
+debug "__base: ${__base}"
+debug "OSTYPE: ${OSTYPE}"
 
-info "arg_e: ${arg_e}"
-info "arg_i: ${arg_i}"
-info "arg_s: ${arg_s}"
-info "arg_t: ${arg_t}"
-info "arg_c: ${arg_c}"
-info "arg_N: ${arg_N}"
-info "arg_d: ${arg_d}"
-info "arg_v: ${arg_v}"
-info "arg_h: ${arg_h}"
-info "arg_n: ${arg_n}"
+debug "Before --env assignment:"
+debug "arg_e: ${arg_e}"
+debug "arg_i: ${arg_i}"
+debug "arg_s: ${arg_s}"
+debug "arg_t: ${arg_t}"
+debug "arg_p: ${arg_p}"
+debug "arg_c: ${arg_c}"
+debug "arg_d: ${arg_d}"
+debug "arg_v: ${arg_v}"
+debug "arg_h: ${arg_h}"
+debug "arg_n: ${arg_n}"
+
+# assign --env if set
+if [[ "$arg_e" ]]; then
+	info "Reading session env vars from $arg_e..."
+	set -a
+	. "$arg_e"
+	set +a
+	TEMP_ENV_VARS=$(env | grep -Fe DS_DFE)
+	info "$TEMP_ENV_VARS"
+	if [[ ! "$arg_i" ]]; then
+		arg_i="$DS_DFE_IMG_NAME"
+	fi
+	if [[ ! "$arg_s" ]]; then
+		arg_s="$DS_DFE_SRC_DIR"
+	fi
+	if [[ ! "$arg_t" ]]; then
+		arg_t="$DS_DFE_TARGET_DIR"
+	fi
+	if [[ ! "$arg_p" ]]; then
+		arg_p="$DS_DFE_PRESERVE"
+	fi
+	if [[ ! "$arg_c" ]]; then
+		arg_c="$DS_DFE_CMD"
+	fi
+fi
+
+debug "After --env assignment:"
+debug "arg_i: ${arg_i}"
+debug "arg_s: ${arg_s}"
+debug "arg_t: ${arg_t}"
+debug "arg_p: ${arg_p}"
+debug "arg_c: ${arg_c}"
 
 if [ ! -f "Dockerfile" ]; then
 	error "Dockerfile does not exist in current directory: $(pwd)"
@@ -478,26 +521,35 @@ if [ ! -f "Dockerfile" ]; then
 fi
 
 # Forces removal of the running docker container that matches the image of the dockerfile.
-CIDS=$(docker ps -a -q --filter ancestor=$arg_i)
-# CID=$(docker ps -a -q --filter ancestor=$arg_i --format="{{.ID}}")
+CIDS=$(docker ps -a -q --filter ancestor="$arg_i")
 
-for CID in $CIDS; do
-	# Forces removal of the running docker container
-	info "Removing existing container with ID: $CID"
-	docker rm -f $CID
-done
+if [ "$CIDS" ]; then
+	info "Stopping existing $arg_i containers..."
+	docker rm -f $CIDS
+fi
 
 # Builds the docker image from the dockerfile if it doesn't exist
-if [[ "$(docker images -q $arg_i 2>/dev/null)" == "" ]]; then
-	info "Building docker image: $arg_i"
-	docker build -t $arg_i .
+if [[ "$(docker images -q "$arg_i" 2>/dev/null)" == "" ]]; then
+	info "Building docker image: $arg_i..."
+	docker build -t "$arg_i" .
 fi
 
-# Run the container and assign the bind mount
-CIDFILE="/tmp/docker-dev-from-env.cid"
-if [ -f "$CIDFILE" ]; then
-	rm -f "$CIDFILE"
+info "Running container as \"$arg_i-dev\", mounting $arg_s at $arg_t..."
+
+# Set up --rm flag if the arg_p is unset
+if [ "$arg_p" = "0" ]; then
+	REMOVE_FLAG="1"
+	info "Docker will remove the container once all processes finish."
 fi
-docker run -v "$arg_s":"$arg_t" -w "$arg_t" --cidfile "$CIDFILE" --name "$arg_i-dev" -d "$arg_i" 
-NEWCID=$(cat "$CIDFILE" | head -c 12)
-info "Running container $arg_i-dev ($NEWCID), mounting $arg_s at $arg_t"
+
+# Run the docker container and assign the bind mount
+if [ ! "$arg_c" ]; then
+	# nothing passed, run and exit after finished
+	docker run -v "$arg_s":"$arg_t" -w "$arg_t" --name "$arg_i-dev" ${REMOVE_FLAG:+"--rm"} "$arg_i"
+elif [ "$arg_c" = "sh" ]; then
+	# "sh" passed, run interactive shell
+	docker run -v "$arg_s":"$arg_t" -w "$arg_t" --name "$arg_i-dev" ${REMOVE_FLAG:+"--rm"} -i "$arg_i" /bin/ash
+else
+	# run the command that was passed in
+	docker run -v "$arg_s":"$arg_t" -w "$arg_t" --name "$arg_i-dev" ${REMOVE_FLAG:+"--rm"} -i "$arg_i" /bin/ash -c "$arg_c"
+fi
