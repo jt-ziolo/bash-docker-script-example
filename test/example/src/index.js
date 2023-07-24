@@ -3,7 +3,7 @@ import chalk from "chalk";
 
 console.log("Hello world!");
 console.log(
-  chalk.white.bold.bgBlue("I'm dependant on a third party library, see?")
+  chalk.white.bold.bgBlue("I depend on a third party library, see?")
 );
 
 const sleep = async (ms) => {
@@ -11,13 +11,13 @@ const sleep = async (ms) => {
 };
 
 const exampleServer = async () => {
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 3; i++) {
+    await sleep(1000);
     console.log(
       chalk.greenBright.bold(
-        `I've been up for ${i} seconds`
+        `I've been up for ${i + 1} seconds`
       )
     );
-    await sleep(1000);
   }
   console.log("Done");
 };
