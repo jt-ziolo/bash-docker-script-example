@@ -542,14 +542,16 @@ if [ "$arg_p" = "0" ]; then
 	info "Docker will remove the container once all processes finish."
 fi
 
+[ -t 0 ] && TTY_FLAG="1" || notice "No TTY available"
+
 # Run the docker container and assign the bind mount
 if [ ! "$arg_c" ]; then
 	# nothing passed, run and exit after finished
 	docker run -v "$arg_s":"$arg_t" -w "$arg_t" --name "$arg_i-dev" ${REMOVE_FLAG:+"--rm"} "$arg_i"
 elif [ "$arg_c" = "sh" ]; then
 	# "sh" passed, run interactive shell
-	docker run -v "$arg_s":"$arg_t" -w "$arg_t" --name "$arg_i-dev" ${REMOVE_FLAG:+"--rm"} -i "$arg_i" /bin/ash
+	docker run -v "$arg_s":"$arg_t" -w "$arg_t" --name "$arg_i-dev" ${REMOVE_FLAG:+"--rm"} -i${TTY_FLAG:+"t"} "$arg_i" /bin/ash
 else
 	# run the command that was passed in
-	docker run -v "$arg_s":"$arg_t" -w "$arg_t" --name "$arg_i-dev" ${REMOVE_FLAG:+"--rm"} -i "$arg_i" /bin/ash -c "$arg_c"
+	docker run -v "$arg_s":"$arg_t" -w "$arg_t" --name "$arg_i-dev" ${REMOVE_FLAG:+"--rm"} -i${TTY_FLAG:+"t"} "$arg_i" /bin/ash -c "$arg_c"
 fi
