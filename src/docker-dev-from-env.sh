@@ -1,16 +1,24 @@
 #!/usr/bin/env bash
 #
-# main.sh
+# docker-dev-from-env.sh
 ##############################################################################
-# This file:
+# This script:
+#   - Closes all running containers that are descendants of the image name
+#   passed in
+#   - Builds a new image from the local Dockerfile
+#   - Sets up a development environment via a bind mount
+#   - Executes the passed command inside of the container
+#   	- If not passed a command, nothing is executed
+#   	- If passed "sh", it launches an interactive shell session
+#   - Removes the container when done unless the --preserve flag is passed in
 #
-#  - Does X TODO
-#  - Does Y TODO
-#  - Does Z TODO
+# The script also optionally accepts a file containing environment vars which
+# correspond to the command line flags. The environment vars are applied first,
+# then overwritten by any other args passed in.
 #
 # Usage:
 #
-#  LOG_LEVEL=7 ./main.sh -f /tmp/x -d TODO
+#  ./docker-dev-from-env.sh --help
 #
 ##############################################################################
 # Based on a template by BASH3 Boilerplate v2.4.1
@@ -207,16 +215,17 @@ EOF
 	   - Run with command line flags based on .env
 	             docker-dev-from-env -e ./.env
 
-	   - Run a command, removing the container after (ephemeral)
+	   - Run a command
 	             docker-dev-from-env -c "yarn install && yarn run test" -k
 
-	   - Start a container and run an interactive shell session
-	             docker-dev-from-env
+	   - Start a container and run an interactive shell session, preserving
+	   it afterwards
+	             docker-dev-from-env -c "sh" -p
 
 	   - Run a container for the image "example", with the host directory
 	   ./ copied to the container as /app, then list from /app in the
-	   container, removing it afterwards (ephemeral)
-	             docker-dev-from-env -i example -s ./ -t /app -c ls -k
+	   container
+	             docker-dev-from-env -i example -s ./ -t /app -c ls
 EOF
 
 # Translate usage string -> getopts arguments, and set $arg_<flag> defaults
