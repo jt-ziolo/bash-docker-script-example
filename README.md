@@ -2,13 +2,13 @@
   
 # docker-scripts
 
-A small collection of Bash and Python scripts I use to interact with Docker while building projects.
+A small collection of Bash and Python scripts I use to simplify Docker Engine use while building projects.
 
 </div>
 
 ## Installation
 
-Extract the scripts located in the `src` directory. Place them somewhere on your path, e.g. `/usr/local/bin`. 
+Download the scripts you want from the `src` directory. Place them somewhere on your path, e.g. `/usr/local/bin` (or update your $PATH var in your shell's configuration to point to them). To make the shell scripts executable, run `chmod +x <name of script>.sh`.
 
 ## Usage
 
