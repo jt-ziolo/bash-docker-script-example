@@ -1,18 +1,20 @@
 <div align="center">
+  
 # docker-scripts
 
-[Installation](#installation) •
-[Usage](#usage) •
+A small collection of Bash and Python scripts I use to interact with Docker while building projects.
 
 </div>
 
 ## Installation
 
-Extract the scripts located in the `src` directory. Place them somewhere on your path, e.g. `/usr/local/bin`. All bash scripts which require root-user permissions will selectively prompt for them
+Extract the scripts located in the `src` directory. Place them somewhere on your path, e.g. `/usr/local/bin`. 
 
 ## Usage
 
 ### docker-dev-from-env.sh
+
+Note: All bash scripts which require root-level permissions for any commands will prompt you for them (there is no need to run these scripts with sudo).
 
 This script:
 
@@ -37,17 +39,19 @@ that does not support tty.
 #### Examples
 
 ```bash
-# Run with command line flags based on .env
+# Run the script with command line flags based on .env
 docker-dev-from-env -e ./.env -p
 
-# Run a command
+# Builds an image and runs a container with a bind mount from ./ to /app, where
+# the container will start and run "yarn install && yarn run test" before being removed.
 docker-dev-from-env -c "yarn install && yarn run test"
 
-# Start a container and run an interactive shell session. Preserve the
-# container afterwards
+# Builds an image and runs a container with a bind mount from ./ to /app, where
+# the container will start and run an interactive shell session. The container
+# will be preserved afterwards.
 docker-dev-from-env -c "sh" -p
 
-# Run a container for the image "example", with the host directory ./ copied to
-# the container as /app, then list from /app in the container
-docker-dev-from-env -i example -s ./ -t /app -c ls
+# Builds an image named "example" and runs a container with a bind mount from ./src to
+# /export, where the container will start and list the contents at the root directory.
+docker-dev-from-env -i example -s ./src -t /export -c ls
 ```
