@@ -31,7 +31,28 @@ The script also optionally accepts a file containing environment vars which
 correspond to the command line flags. The environment vars are applied first,
 then overwritten by any other args passed in.
 
-`./docker-dev-from-env.sh --help`
+```
+# ./docker-dev-from-env.sh --help
+
+ Help using ./src/docker-dev-from-env.sh
+
+  -e --env         [arg] Path to file containing environment vars
+  -i --img-name    [arg] Name used for the docker image.
+                         Default="default"
+  -s --src-dir     [arg] Source directory for the bind mount.
+                         Default="./"
+  -t --target-dir  [arg] Target directory for the bind mount.
+                         Default="/app"
+  -c --cmd         [arg] Commands to run inside the container, runs
+                         an interactive shell session if "sh" is passed
+  -p --preserve          If present, the container is not removed after it
+                         finishes running the command, but it may still stop
+                         if not kept running by another process
+  -v --verbose           Enable verbose mode, print script as it is executed
+  -d --debug             Enables debug mode
+  -h --help              This page
+  -n --no-color          Disable color output
+```
 
 Docker will not be passed a -t flag if the script is run from an environment
 that does not support tty.
