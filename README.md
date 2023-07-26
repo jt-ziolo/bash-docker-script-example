@@ -1,20 +1,16 @@
 <div align="center">
   
-# docker-scripts
-
-A small collection of Bash and Python scripts I use to simplify Docker Engine use while building projects.
+# docker-dev-from-env.sh
 
 </div>
 
 ## Installation
 
-Download the scripts you want from the `src` directory. Place them somewhere on your path, e.g. `/usr/local/bin` (or update your $PATH var in your shell's configuration to point to them). To make the shell scripts executable, run `chmod +x <name of script>.sh`.
+Download docker-dev-from-env.sh from the `src` directory. Place it somewhere on your path, e.g. `/usr/local/bin` (or update your $PATH var in your shell's configuration to point to them). To make shell scripts executable, run `chmod +x <name of script>.sh`.
 
 ## Usage
 
-### docker-dev-from-env.sh
-
-Note: All bash scripts which require root-level permissions for any commands will prompt you for them (there is no need to run these scripts with sudo).
+Note: All commands which require root-level permissions will prompt you for them (there is no need to run this script with sudo).
 
 This script:
 
